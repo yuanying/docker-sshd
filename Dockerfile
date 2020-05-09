@@ -1,7 +1,14 @@
 FROM ubuntu:20.04
 
 RUN apt-get update && \
-    apt-get install -y sudo openssh-server curl vim dnsutils jq rsync && \
+    apt-get install -y sudo \
+        language-pack-en \
+        openssh-server \
+        curl \
+        vim \
+        dnsutils \
+        jq \
+        rsync && \
     apt-get clean && \
     mkdir /var/run/sshd && \
     mkdir /root/.ssh
