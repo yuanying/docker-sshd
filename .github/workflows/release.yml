@@ -1,0 +1,60 @@
+name: Weekly release
+
+# Once a week, when the image's files have changed since the latest vX.Y.Z
+# tag, publish the next patch version. A tag pushed with GITHUB_TOKEN starts
+# no other workflow, so the image is built and pushed here, before the tag
+# is made: a failed push leaves no tag without an image behind it.
+
+on:
+  schedule:
+    # Monday 09:00 JST
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  decide:
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.next.outputs.release }}
+      version: ${{ steps.next.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Decide the next version
+        id: next
+        # The files the image is built from, as in docker.yml's paths.
+        run: .github/scripts/next-release.sh Dockerfile entrypoint.sh
+
+  publish:
+    needs: decide
+    if: needs.decide.outputs.release == 'true'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/docker.yml
+    with:
+      version: ${{ needs.decide.outputs.version }}
+
+  tag:
+    needs: [decide, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Tag the published commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.decide.outputs.version }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f "ref=refs/tags/${VERSION}" \
+            -f "sha=${GITHUB_SHA}"
