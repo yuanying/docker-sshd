@@ -20,6 +20,8 @@ concurrency:
 
 jobs:
   decide:
+    # Releases are cut from master only, even when dispatched from another branch.
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     outputs:
       release: ${{ steps.next.outputs.release }}
