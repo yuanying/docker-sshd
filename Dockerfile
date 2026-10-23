@@ -8,7 +8,8 @@ RUN apt-get update && \
         vim \
         dnsutils \
         jq \
-        rsync && \
+        rsync \
+        git && \
     apt-get clean && \
     mkdir /var/run/sshd && \
     mkdir /root/.ssh
