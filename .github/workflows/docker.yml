@@ -60,6 +60,15 @@ jobs:
             TAGS="$TAGS,${DOCKER_IMAGE}:latest"
           fi
 
+          # A push to master publishes the single moving tag 'main', which
+          # the vulnerability tracker scans to tell a fix already on master
+          # from one that has been released. The weekly release calls this
+          # workflow with master as its ref too, but not as a push.
+          if [[ $GITHUB_EVENT_NAME == push && $GITHUB_REF == refs/heads/master ]]; then
+            TAGS="${DOCKER_IMAGE}:main"
+            PUSH=true
+          fi
+
           # Set output parameters.
           {
             echo "tags=${TAGS}"
@@ -89,9 +98,12 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: false
           tags: ${{ steps.prep.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
 
-  # Only the runs that push an image (a vX.Y.Z tag, or the weekly release)
-  # get a token that can write packages.
+  # Only the runs that push an image (a vX.Y.Z tag, the weekly release, or
+  # a push to master) get a token that can write packages.
   publish:
     needs: build
     if: needs.build.outputs.push == 'true'
@@ -128,3 +140,29 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ needs.build.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+  # Each push of 'main' leaves the image it replaced untagged. The action
+  # treats a multi-arch image and its platform manifests as one, so it never
+  # strips the children of a tagged image. Images younger than an hour are
+  # left alone, so that one being pushed by the weekly release at the same
+  # time is not taken for untagged before its index is tagged.
+  cleanup:
+    needs: publish
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ghcr-cleanup
+    permissions:
+      packages: write
+    steps:
+      -
+        # https://github.com/dataaxiom/ghcr-cleanup-action
+        name: Delete untagged images
+        uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
+        with:
+          delete-untagged: true
+          older-than: 1 hour
+          validate: true
