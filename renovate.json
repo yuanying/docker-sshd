@@ -1,10 +1,10 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "A version is proposed only once it has been public for seven days, so that a release pulled or fixed in its first week never reaches a branch. internalChecksFilter is already strict by default; it is stated so that the wait is read here as holding back the branch and the pull request themselves, not only a status check on them",
+  "description": "A version is proposed only once it has been public for two days, so that a release pulled or fixed in its first days never reaches a branch. Seven days held back the releases of anything published more often than once a week. internalChecksFilter is already strict by default; it is stated so that the wait is read here as holding back the branch and the pull request themselves, not only a status check on them",
   "extends": ["config:recommended", ":semanticCommitTypeAll(chore)"],
   "timezone": "Asia/Tokyo",
   "dependencyDashboard": true,
-  "minimumReleaseAge": "7 days",
+  "minimumReleaseAge": "2 days",
   "internalChecksFilter": "strict",
   "platformAutomerge": false,
   "packageRules": [
@@ -14,7 +14,7 @@
       "pinDigests": true
     },
     {
-      "description": "The base image is proposed without the seven-day wait. Docker Hub gives a tag's last push as its release time, and the official ubuntu tags are pushed again every day or two, so a tag never looks seven days old and no update would ever be proposed. The pull request's build still has to pass",
+      "description": "The base image is proposed without the wait. Docker Hub gives a tag's last push as its release time, and the official ubuntu tags are pushed again every day or two, so a tag rarely looks two days old and an update would seldom be proposed. The pull request's build still has to pass",
       "matchManagers": ["dockerfile"],
       "minimumReleaseAge": null
     },
