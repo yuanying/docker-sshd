@@ -54,7 +54,7 @@ jobs:
       sha: ${{ steps.sha.outputs.sha }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # A pull request's own ref is its merge preview; the fix is
           # released as the commit its merge made on master.
