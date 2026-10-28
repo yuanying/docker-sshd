@@ -14,6 +14,11 @@
       "pinDigests": true
     },
     {
+      "description": "The base image is proposed without the seven-day wait. Docker Hub gives a tag's last push as its release time, and the official ubuntu tags are pushed again every day or two, so a tag never looks seven days old and no update would ever be proposed. The pull request's build still has to pass",
+      "matchManagers": ["dockerfile"],
+      "minimumReleaseAge": null
+    },
+    {
       "description": "Patch releases, digest updates and the first pins are merged by Renovate itself once the pull request's checks have passed. Renovate merges rather than the platform, so that the repository needs no auto-merge setting or branch protection; a pull request with no checks is never merged. Minor and major updates open a pull request to be reviewed by hand",
       "matchUpdateTypes": ["patch", "digest", "pin", "pinDigest"],
       "automerge": true
