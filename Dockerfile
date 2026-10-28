@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 RUN apt-get update && \
     apt-get install -y sudo \
@@ -11,8 +11,8 @@ RUN apt-get update && \
         rsync \
         git && \
     apt-get clean && \
-    mkdir /var/run/sshd && \
-    mkdir /root/.ssh
+    mkdir -p /var/run/sshd && \
+    mkdir -p /root/.ssh
 
 # SSH login fix. Otherwise user is kicked off after login
 RUN sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd

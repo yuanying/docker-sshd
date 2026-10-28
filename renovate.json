@@ -1,10 +1,10 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "A version is proposed only once it has been public for seven days, so that a release pulled or fixed in its first week never reaches a branch. internalChecksFilter is already strict by default; it is stated so that the wait is read here as holding back the branch and the pull request themselves, not only a status check on them",
+  "description": "A version is proposed only once it has been public for two days, so that a release pulled or fixed in its first days never reaches a branch. Seven days held back the releases of anything published more often than once a week. internalChecksFilter is already strict by default; it is stated so that the wait is read here as holding back the branch and the pull request themselves, not only a status check on them",
   "extends": ["config:recommended", ":semanticCommitTypeAll(chore)"],
   "timezone": "Asia/Tokyo",
   "dependencyDashboard": true,
-  "minimumReleaseAge": "7 days",
+  "minimumReleaseAge": "2 days",
   "internalChecksFilter": "strict",
   "platformAutomerge": false,
   "packageRules": [
@@ -12,6 +12,11 @@
       "description": "The base image is pinned to a digest, so that a rebuild of the same tag upstream reaches the image through a pull request whose build has passed, and the weekly release publishes it as a new version. Pinning is limited to the Dockerfile; actions keep their version tags",
       "matchManagers": ["dockerfile"],
       "pinDigests": true
+    },
+    {
+      "description": "The base image is proposed without the wait. Docker Hub gives a tag's last push as its release time, and the official ubuntu tags are pushed again every day or two, so a tag rarely looks two days old and an update would seldom be proposed. The pull request's build still has to pass",
+      "matchManagers": ["dockerfile"],
+      "minimumReleaseAge": null
     },
     {
       "description": "Patch releases, digest updates and the first pins are merged by Renovate itself once the pull request's checks have passed. Renovate merges rather than the platform, so that the repository needs no auto-merge setting or branch protection; a pull request with no checks is never merged. Minor and major updates open a pull request to be reviewed by hand",
