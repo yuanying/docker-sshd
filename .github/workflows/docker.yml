@@ -18,6 +18,11 @@ on:
         description: 'Version to publish the image as, such as v1.2.3'
         required: true
         type: string
+      ref:
+        description: 'Commit to build, when it is not the one that started the run'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -28,6 +33,7 @@ jobs:
     outputs:
       tags: ${{ steps.prep.outputs.tags }}
       push: ${{ steps.prep.outputs.push }}
+      revision: ${{ steps.prep.outputs.revision }}
     steps:
       -
         name: Prepare
@@ -35,7 +41,7 @@ jobs:
         run: |
           DOCKER_IMAGE=ghcr.io/${{ github.repository }}
           VERSION=latest
-          SHORTREF=${GITHUB_SHA::8}
+          SHORTREF=${REVISION::8}
 
           PUSH=false
 
@@ -74,13 +80,17 @@ jobs:
             echo "tags=${TAGS}"
             echo "docker_image=${DOCKER_IMAGE}"
             echo "push=${PUSH}"
+            echo "revision=${REVISION}"
           } >> "${GITHUB_OUTPUT}"
         env:
           INPUT_VERSION: ${{ inputs.version }}
+          REVISION: ${{ inputs.ref || github.sha }}
       -
         # https://github.com/actions/checkout
         name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -100,7 +110,7 @@ jobs:
           tags: ${{ steps.prep.outputs.tags }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ steps.prep.outputs.revision }}
 
   # Only the runs that push an image (a vX.Y.Z tag, the weekly release, or
   # a push to master) get a token that can write packages.
@@ -116,6 +126,8 @@ jobs:
         # https://github.com/actions/checkout
         name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.build.outputs.revision }}
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -142,7 +154,7 @@ jobs:
           tags: ${{ needs.build.outputs.tags }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ needs.build.outputs.revision }}
 
   # Each push of 'main' leaves the image it replaced untagged. The action
   # treats a multi-arch image and its platform manifests as one, so it never

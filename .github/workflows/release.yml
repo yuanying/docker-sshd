@@ -4,37 +4,71 @@ name: Weekly release
 # tag, publish the next patch version. A tag pushed with GITHUB_TOKEN starts
 # no other workflow, so the image is built and pushed here, before the tag
 # is made: a failed push leaves no tag without an image behind it.
+#
+# A vulnerability fix does not wait for the week: when a pull request from a
+# vuln-responder/ branch is merged into master, the next patch version is
+# published at once, provided that every commit since the latest tag was
+# written by Renovate or the vulnerability responder. Otherwise the job
+# summary lists the commits that held it back, and the weekly release, or
+# a dispatch of it, publishes them once a person has looked.
 
 on:
   schedule:
     # Monday 09:00 JST
     - cron: '0 0 * * 1'
   workflow_dispatch:
+  pull_request:
+    types: [closed]
+    branches:
+      - 'master'
 
 permissions:
   contents: read
 
+# A pull request closed without a fix to release starts a run too; it gets a
+# group of its own, so that it neither waits behind a release nor takes the
+# place of one waiting.
 concurrency:
-  group: release
+  group: >-
+    ${{ (github.event_name != 'pull_request' ||
+      (github.event.pull_request.merged == true &&
+        startsWith(github.event.pull_request.head.ref, 'vuln-responder/')))
+    && 'release' || format('release-skip-{0}', github.run_id) }}
   cancel-in-progress: false
 
 jobs:
   decide:
-    # Releases are cut from master only, even when dispatched from another branch.
-    if: github.ref == 'refs/heads/master'
+    # Releases are cut from master only, even when dispatched from another
+    # branch. Of the pull requests closed on master, only a merged fix from
+    # a vuln-responder/ branch of this repository releases.
+    if: >-
+      (github.event_name != 'pull_request' && github.ref == 'refs/heads/master') ||
+      (github.event_name == 'pull_request' &&
+        github.event.pull_request.merged == true &&
+        startsWith(github.event.pull_request.head.ref, 'vuln-responder/') &&
+        github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     outputs:
       release: ${{ steps.next.outputs.release }}
       version: ${{ steps.next.outputs.version }}
+      sha: ${{ steps.sha.outputs.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          # A pull request's own ref is its merge preview; the fix is
+          # released as the commit its merge made on master.
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
           fetch-depth: 0
+      - name: Commit to release
+        id: sha
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Decide the next version
         id: next
         # The files the image is built from, as in docker.yml's paths.
-        run: .github/scripts/next-release.sh Dockerfile entrypoint.sh
+        run: .github/scripts/next-release.sh ${BOTS_ONLY:+--bots-only} Dockerfile entrypoint.sh
+        env:
+          BOTS_ONLY: ${{ github.event_name == 'pull_request' && 'true' || '' }}
 
   publish:
     needs: decide
@@ -45,6 +79,7 @@ jobs:
     uses: ./.github/workflows/docker.yml
     with:
       version: ${{ needs.decide.outputs.version }}
+      ref: ${{ needs.decide.outputs.sha }}
 
   tag:
     needs: [decide, publish]
@@ -56,7 +91,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.decide.outputs.version }}
+          SHA: ${{ needs.decide.outputs.sha }}
         run: |
           gh api "repos/${GITHUB_REPOSITORY}/git/refs" \
             -f "ref=refs/tags/${VERSION}" \
-            -f "sha=${GITHUB_SHA}"
+            -f "sha=${SHA}"
