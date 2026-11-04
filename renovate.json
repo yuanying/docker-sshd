@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>yuanying/renovate-config", "github>yuanying/renovate-config:automerge-patch"],
+  "extends": ["github>yuanying/renovate-config", "github>yuanying/renovate-config:platform-automerge"],
   "packageRules": [
     {
       "description": "The base image is pinned to a digest, so that a rebuild of the same tag upstream reaches the image through a pull request whose build has passed, and the weekly release publishes it as a new version. Pinning is limited to the Dockerfile; actions keep their version tags",
